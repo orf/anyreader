@@ -4,6 +4,10 @@ A library for reading streams of compressed and uncompressed data without knowin
 
 You can use this to recursively read raw data from potentially compressed streams that may contain archives.
 
+# Installation:
+
+`cargo add anyreader`
+
 # Example:
 
 The code below will read the contents of a tar.gz archive and print the size of each file. Any archives or
@@ -28,4 +32,16 @@ fn main() -> io::Result<()> {
 
     Ok(())
 }
+```
+
+# CLI
+
+The `anyreader` crate also comes with a CLI tool that can be used to read files from the command line. It will 
+recursively read any archives or compressed files within the input files, and write the decompressed, flattened 
+contents to the output file in a `tar` format.
+
+This requires the `cli` feature: `cargo install anyreader -F cli`
+
+```sh
+anyreader tests/data/archive.tar.gz output.tar
 ```

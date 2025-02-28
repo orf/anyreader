@@ -10,10 +10,13 @@ use tracing_subscriber::fmt;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 
+/// A simple CLI tool to read files and directories and write them to a tar archive.
 #[derive(Parser)]
 struct Args {
+    /// Input files to read. Can be raw, compressed or archive files. Use `-` for stdin.
     #[clap(value_parser, required = true)]
     input: Vec<Input>,
+    /// Output file to write the tar archive to. Use `-` for stdout.
     #[clap(value_parser)]
     output: Output,
 }
