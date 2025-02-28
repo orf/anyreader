@@ -1,3 +1,4 @@
 /target
 test-data/*
 .idea/
+.DS_Store

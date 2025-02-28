@@ -2,6 +2,7 @@
 name = "anyreader"
 version = "0.3.0"
 edition = "2024"
+repository = "https://github.com/orf/anyreader"
 
 [dependencies]
 zstd = { version = "0.13.2", default-features = false, features = ["arrays"] }
