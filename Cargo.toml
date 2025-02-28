@@ -3,6 +3,8 @@ name = "anyreader"
 version = "0.3.0"
 edition = "2024"
 repository = "https://github.com/orf/anyreader"
+license = "MIT"
+description = "Efficiently and recursively read archives and compressed streams of data"
 
 [dependencies]
 zstd = { version = "0.13.2", default-features = false, features = ["arrays"] }

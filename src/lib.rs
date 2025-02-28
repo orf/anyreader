@@ -1,3 +1,5 @@
+#![doc = include_str!("../README.md")]
+
 use std::io;
 use std::io::Read;
 use std::path::{Path, PathBuf};
