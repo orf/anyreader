@@ -1,7 +1,7 @@
 mod utils;
 
 use crate::utils::{gzip_data, xz_data, zstd_data};
-use anyreader::read_recursive;
+use anyreader::recursive_read;
 use std::path::{Path, PathBuf};
 use tracing_test::traced_test;
 
@@ -9,11 +9,12 @@ const DATA: &[u8] = b"hello world";
 
 fn process(data: &[u8]) -> Vec<(PathBuf, Vec<u8>)> {
     let mut result = Vec::new();
-    read_recursive(Path::new("root"), data, &mut |item| {
+    recursive_read(Path::new("root"), data, &mut |item| {
         let mut buf = Vec::new();
         item.reader.read_to_end(&mut buf).unwrap();
         result.push((item.path, buf));
-    });
+        Ok(())
+    }).unwrap();
     result
 }
 

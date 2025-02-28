@@ -1,3 +1,4 @@
+use std::io;
 use std::io::{Chain, Read};
 
 pub struct Buf<const N: usize> {
@@ -17,12 +18,12 @@ impl<const N: usize> Buf<N> {
         &self.inner[..self.len]
     }
 
-    pub fn append_from_reader(&mut self, reader: &mut impl Read) -> usize {
+    pub fn append_from_reader(&mut self, reader: &mut impl Read) -> io::Result<usize> {
         let len = self.len;
         // let remaining = N - len;
-        let read = reader.read(&mut self.inner[len..]).unwrap();
+        let read = reader.read(&mut self.inner[len..])?;
         self.len += read;
-        read
+        Ok(read)
     }
 }
 
@@ -55,19 +56,19 @@ pub struct Peekable<T: Read, const N: usize> {
 }
 
 impl<T: Read, const N: usize> Peekable<T, N> {
-    pub fn new(mut reader: T) -> Self {
+    pub fn new(mut reader: T) -> io::Result<Self> {
         let mut buf = Buf::new();
         let mut total_read = 0;
 
         while total_read < N {
-            let read = buf.append_from_reader(&mut reader);
+            let read = buf.append_from_reader(&mut reader)?;
             if read == 0 {
                 break;
             }
             total_read += read;
         }
         let buf = std::io::Cursor::new(buf);
-        Self { buf, reader }
+        Ok(Self { buf, reader })
     }
 
     pub fn into_reader(self) -> PeekableReader<T, N> {

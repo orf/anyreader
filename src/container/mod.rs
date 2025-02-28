@@ -6,9 +6,10 @@ use crate::container::zip_container::ZipContainer;
 use crate::peekable::Peekable;
 use crate::stream::StreamKind;
 use std::fmt::{Debug, Formatter};
+use std::io;
 use std::io::Read;
-use std::path::PathBuf;
 use tracing::trace;
+use crate::FileItem;
 
 // Annoying: this needs to be quite high to detect tar archives
 const ARCHIVE_BUF_SIZE: usize = 262;
@@ -46,56 +47,42 @@ impl<T: Read, const N: usize> Debug for ContainerKind<T, N> {
 }
 
 impl<T: Read> ContainerKind<T, ARCHIVE_BUF_SIZE> {
-    pub fn from_reader(reader: T) -> ContainerKind<T, ARCHIVE_BUF_SIZE> {
-        let peekable = Peekable::new(reader);
-        let kind = StreamKind::from_peekable(peekable);
+    pub fn from_reader(reader: T) -> io::Result<ContainerKind<T, ARCHIVE_BUF_SIZE>> {
+        let peekable = Peekable::new(reader)?;
+        let kind = StreamKind::from_peekable(peekable)?;
         match kind {
-            StreamKind::Compressed(c) => Self::Stream(StreamKind::Compressed(c)),
+            StreamKind::Compressed(c) => Ok(Self::Stream(StreamKind::Compressed(c))),
             StreamKind::Raw(r) => {
                 let buf = r.peek_buf();
                 if infer::archive::is_tar(buf) {
                     trace!("tar detected");
-                    ContainerKind::Archive(ArchiveKind::Tar(TarContainer::new(StreamKind::Raw(r))))
+                    Ok(ContainerKind::Archive(ArchiveKind::Tar(TarContainer::new(StreamKind::Raw(r)))))
                 } else if infer::archive::is_zip(buf) {
                     trace!("zip detected");
-                    ContainerKind::Archive(ArchiveKind::Zip(ZipContainer::new(StreamKind::Raw(r))))
+                    Ok(ContainerKind::Archive(ArchiveKind::Zip(ZipContainer::new(StreamKind::Raw(r)))))
                 } else {
                     trace!("stream detected");
-                    ContainerKind::Stream(StreamKind::Raw(r))
+                    Ok(ContainerKind::Stream(StreamKind::Raw(r)))
                 }
             }
         }
     }
 }
 
-#[derive(Debug, strum::EnumIs)]
-pub enum FileKind {
-    File,
-    Directory,
-    Other,
-}
-
-#[derive(Debug)]
-pub struct FileItem<T: Read> {
-    pub path: PathBuf,
-    pub reader: T,
-    pub kind: FileKind,
-}
-
 pub trait Container {
-    fn items(&mut self) -> impl Items;
+    fn items(&mut self) -> io::Result<impl Items>;
 }
 
 pub trait Items {
-    fn next_item(&mut self) -> Option<FileItem<impl Read>>;
+    fn next_item(&mut self) -> Option<io::Result<FileItem<impl Read>>>;
 }
 
 impl<T, R> Items for T
 where
     R: Read,
-    T: Iterator<Item = FileItem<R>>,
+    T: Iterator<Item = io::Result<FileItem<R>>>,
 {
-    fn next_item(&mut self) -> Option<FileItem<impl Read>> {
+    fn next_item(&mut self) -> Option<io::Result<FileItem<impl Read>>> {
         self.next()
     }
 }
@@ -118,12 +105,12 @@ mod tests {
         let mut encoder = flate2::write::GzEncoder::new(Vec::new(), Default::default());
         encoder.write_all(&zstd_data).unwrap();
         let compressed_data = encoder.finish().unwrap();
-        let gzip_file_kind = ContainerKind::from_reader(compressed_data.as_slice());
+        let gzip_file_kind = ContainerKind::from_reader(compressed_data.as_slice()).unwrap();
         let stream_kind = assert_matches!(
             gzip_file_kind,
             ContainerKind::Stream(StreamKind::Compressed(CompressionKind::Gzip(r))) => r
         );
-        let stream_kind = ContainerKind::from_reader(stream_kind);
+        let stream_kind = ContainerKind::from_reader(stream_kind).unwrap();
         assert_matches!(
             stream_kind,
             ContainerKind::Stream(StreamKind::Compressed(CompressionKind::Zst(_)))

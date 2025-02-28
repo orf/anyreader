@@ -1,6 +1,8 @@
-use crate::container::{Container, FileItem, FileKind, Items};
+use crate::container::{Container, Items};
 use std::fmt::Debug;
+use std::io;
 use std::io::Read;
+use crate::{FileItem, FileKind};
 
 pub struct ZipContainer<T: Read> {
     reader: T,
@@ -19,10 +21,10 @@ impl<T: Read> ZipContainer<T> {
 }
 
 impl<T: Read> Container for ZipContainer<T> {
-    fn items(&mut self) -> impl Items {
-        ZipFileIter {
+    fn items(&mut self) -> io::Result<impl Items> {
+        Ok(ZipFileIter {
             reader: &mut self.reader,
-        }
+        })
     }
 }
 
@@ -31,7 +33,7 @@ pub struct ZipFileIter<'a, T: Read> {
 }
 
 impl<T: Read> Items for ZipFileIter<'_, T> {
-    fn next_item(&mut self) -> Option<FileItem<impl Read>> {
+    fn next_item(&mut self) -> Option<io::Result<FileItem<impl Read>>> {
         if let Ok(Some(item)) = zip::read::read_zipfile_from_stream(&mut self.reader) {
             let path = item.enclosed_name().unwrap().to_path_buf();
             let kind = if item.is_file() {
@@ -41,11 +43,11 @@ impl<T: Read> Items for ZipFileIter<'_, T> {
             } else {
                 FileKind::Other
             };
-            return Some(FileItem {
+            return Some(Ok(FileItem {
                 path,
                 reader: item,
                 kind,
-            });
+            }));
         }
         None
     }

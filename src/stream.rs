@@ -1,6 +1,7 @@
 use crate::peekable::{Peekable, PeekableReader};
 use flate2::read::GzDecoder;
 use std::fmt::{Debug, Formatter};
+use std::io;
 use std::io::{BufReader, Read};
 use tracing::trace;
 
@@ -28,29 +29,29 @@ impl<T: Read, const N: usize> Read for StreamKind<T, N> {
 }
 
 impl<T: Read, const N: usize> StreamKind<T, N> {
-    pub fn from_peekable(peekable: Peekable<T, N>) -> StreamKind<T, N> {
+    pub fn from_peekable(peekable: Peekable<T, N>) -> io::Result<StreamKind<T, N>> {
         let buf = peekable.peek_buf();
 
         if infer::archive::is_gz(buf) {
             trace!("gzip detected");
             let decoder = GzDecoder::new(peekable.into_reader());
-            StreamKind::Compressed(CompressionKind::Gzip(decoder))
+            Ok(StreamKind::Compressed(CompressionKind::Gzip(decoder)))
         } else if is_zstd(buf) {
             trace!("zstd detected");
             let decoder =
-                zstd::Decoder::with_buffer(BufReader::new(peekable.into_reader())).unwrap();
-            StreamKind::Compressed(CompressionKind::Zst(decoder))
+                zstd::Decoder::with_buffer(BufReader::new(peekable.into_reader()))?;
+            Ok(StreamKind::Compressed(CompressionKind::Zst(decoder)))
         } else if infer::archive::is_bz2(buf) {
             trace!("bzip2 detected");
             let decoder = bzip2::read::BzDecoder::new(peekable.into_reader());
-            StreamKind::Compressed(CompressionKind::Bzip2(decoder))
+            Ok(StreamKind::Compressed(CompressionKind::Bzip2(decoder)))
         } else if infer::archive::is_xz(buf) {
             trace!("xz detected");
             let decoder = liblzma::read::XzDecoder::new_multi_decoder(peekable.into_reader());
-            StreamKind::Compressed(CompressionKind::Xz(decoder))
+            Ok(StreamKind::Compressed(CompressionKind::Xz(decoder)))
         } else {
             trace!("raw detected");
-            StreamKind::Raw(peekable.into_reader())
+            Ok(StreamKind::Raw(peekable.into_reader()))
         }
     }
 }
@@ -59,8 +60,8 @@ impl<T: Read, const N: usize> StreamKind<T, N> {
 const STREAM_BUF_SIZE: usize = 8;
 
 impl<T: Read> StreamKind<T, STREAM_BUF_SIZE> {
-    pub fn from_reader(reader: T) -> StreamKind<T, STREAM_BUF_SIZE> {
-        let peekable: Peekable<T, 8> = Peekable::new(reader);
+    pub fn from_reader(reader: T) -> io::Result<StreamKind<T, STREAM_BUF_SIZE>> {
+        let peekable: Peekable<T, 8> = Peekable::new(reader)?;
         Self::from_peekable(peekable)
     }
 }
@@ -125,7 +126,7 @@ mod tests {
     #[test]
     fn test_raw_file() {
         let reader = std::io::Cursor::new(DATA);
-        let file_kind = StreamKind::from_reader(reader);
+        let file_kind = StreamKind::from_reader(reader).unwrap();
         assert_matches!(file_kind, StreamKind::Raw(_));
     }
 
@@ -135,7 +136,7 @@ mod tests {
         let mut encoder = flate2::write::GzEncoder::new(Vec::new(), Default::default());
         encoder.write_all(DATA).unwrap();
         let compressed_data = encoder.finish().unwrap();
-        let file_kind = StreamKind::from_reader(compressed_data.as_slice());
+        let file_kind = StreamKind::from_reader(compressed_data.as_slice()).unwrap();
         assert_matches!(file_kind, StreamKind::Compressed(CompressionKind::Gzip(_)));
     }
 
@@ -143,7 +144,7 @@ mod tests {
     #[test]
     fn test_zstd_file() {
         let data = zstd::encode_all(DATA, 1).unwrap();
-        let file_kind = StreamKind::from_reader(data.as_slice());
+        let file_kind = StreamKind::from_reader(data.as_slice()).unwrap();
         assert_matches!(file_kind, StreamKind::Compressed(CompressionKind::Zst(_)));
     }
 
@@ -153,7 +154,7 @@ mod tests {
         let mut data = bzip2::write::BzEncoder::new(Vec::new(), Default::default());
         data.write_all(DATA).unwrap();
         let data = data.finish().unwrap();
-        let file_kind = StreamKind::from_reader(data.as_slice());
+        let file_kind = StreamKind::from_reader(data.as_slice()).unwrap();
         assert_matches!(file_kind, StreamKind::Compressed(CompressionKind::Bzip2(_)));
     }
 
@@ -163,7 +164,7 @@ mod tests {
         let mut data = liblzma::write::XzEncoder::new(Vec::new(), 1);
         data.write_all(DATA).unwrap();
         let data = data.finish().unwrap();
-        let file_kind = StreamKind::from_reader(data.as_slice());
+        let file_kind = StreamKind::from_reader(data.as_slice()).unwrap();
         assert_matches!(file_kind, StreamKind::Compressed(CompressionKind::Xz(_)));
     }
 }

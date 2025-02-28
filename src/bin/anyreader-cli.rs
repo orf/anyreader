@@ -1,4 +1,5 @@
-use anyreader::read_recursive;
+use std::io;
+use anyreader::recursive_read;
 use clap::Parser;
 use clio::*;
 use std::io::{BufReader, BufWriter, Read, Seek, Write};
@@ -28,21 +29,23 @@ fn main() -> anyhow::Result<()> {
     let mut builder = tar::Builder::new(BufWriter::new(args.output));
 
     for input in args.input {
-        handle_reader(&input.path().clone(), BufReader::new(input), &mut builder);
+        handle_reader(&input.path().clone(), BufReader::new(input), &mut builder)?;
     }
 
     builder.finish()?;
     Ok(())
 }
 
-fn handle_reader(path: &Path, reader: impl Read, builder: &mut tar::Builder<impl Write + Seek>) {
-    read_recursive(path, reader, &mut |item| {
+fn handle_reader(path: &Path, reader: impl Read, builder: &mut tar::Builder<impl Write + Seek>) -> io::Result<()> {
+    recursive_read(path, reader, &mut |item| {
         if !item.kind.is_file() {
-            return;
+            return Ok(());
         }
         let mut header = tar::Header::new_gnu();
-        let mut entry = builder.append_writer(&mut header, &item.path).unwrap();
-        std::io::copy(item.reader, &mut entry).unwrap();
+        let mut entry = builder.append_writer(&mut header, &item.path)?;
+        std::io::copy(item.reader, &mut entry)?;
         info!("Wrote {:?}", item.path);
-    });
+        Ok(())
+    })?;
+    Ok(())
 }
