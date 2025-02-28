@@ -43,5 +43,19 @@ contents to the output file in a `tar` format.
 This requires the `cli` feature: `cargo install anyreader -F cli`
 
 ```sh
-anyreader tests/data/archive.tar.gz output.tar
+anyreader tests/data/archive.tar.gz tests/data/archive-2.zip output.tar
+```
+
+```sh
+A simple CLI tool to read files and directories and write them to a tar archive
+
+Usage: anyreader <INPUT>... <OUTPUT>
+
+Arguments:
+  <INPUT>...  Input files to read. Can be raw, compressed or archive files. Use `-` for stdin
+  <OUTPUT>    Output file to write the tar archive to. Use `-` for stdout
+
+Options:
+  -h, --help     Print help
+  -V, --version  Print version
 ```

@@ -31,7 +31,7 @@ default = []
 cli = ["clio", "clap", "anyhow", "tracing-subscriber"]
 
 [[bin]]
-name = "anyreader-cli"
+name = "anyreader"
 required-features = ["cli"]
 
 [profile.opt]
