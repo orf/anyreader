@@ -9,10 +9,10 @@ description = "Efficiently and recursively read archives and compressed streams 
 [dependencies]
 zstd = { version = "0.13.2", default-features = false, features = ["arrays"] }
 flate2 = { version = "1.1.1", features = ["zlib-ng"], default-features = false }
-liblzma = "0.4.0"
-bzip2 = "0.5.2"
+liblzma = "0.4.5"
+bzip2 = "0.6.1"
 tar = "0.4.43"
-zip = "2.2.2"
+zip = "7.2"
 infer = "0.19.0"
 tracing = "0.1.41"
 strum = { version = "0.27.1", features = ["derive"] }
