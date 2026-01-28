@@ -23,5 +23,8 @@ jobs:
       - name: Run cargo check
         run: cargo check --all-features
 
-      - name: Run pre-commit
-        run: cargo clippy --all-features
+      - name: Run clippy
+        run: cargo clippy --all-features -- -D warnings
+
+      - name: Run tests
+        run: cargo test
