@@ -34,6 +34,37 @@ fn main() -> io::Result<()> {
 }
 ```
 
+## `iterate_archive`
+
+If you want to iterate archive entries without recursion, use `iterate_archive`. This function:
+- Decompresses outer layers (gzip, zstd, bzip2, xz) to reach the archive
+- Iterates archive entries (tar or zip) once
+- Returns entries with raw bytes - does NOT recurse into nested archives or decompress entry contents
+
+```rust
+use anyreader::iterate_archive;
+use std::fs::File;
+use std::io::{self, BufReader};
+
+fn main() -> io::Result<()> {
+    let reader = BufReader::new(File::open("tests/data/archive.tar.gz")?);
+
+    iterate_archive(reader, |mut item| {
+        println!("Entry: {} ({} bytes)", item.path.display(),
+            io::copy(&mut item.reader, &mut io::sink())?);
+        Ok(())
+    })?;
+
+    Ok(())
+}
+```
+
+| Behavior        | `recursive_read`            | `iterate_archive`         |
+|-----------------|-----------------------------|---------------------------|
+| Compression     | Recurses through all layers | Recurses to reach archive |
+| Nested archives | Recurses into them          | Stops, returns as entry   |
+| Entry content   | Auto-decompressed           | Raw bytes                 |
+
 # CLI
 
 The `anyreader` crate also comes with a CLI tool that can be used to read files from the command line. It will 

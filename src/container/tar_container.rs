@@ -1,9 +1,9 @@
 use crate::container::{Container, Items};
+use crate::{FileItem, FileKind};
 use std::fmt::Debug;
 use std::io;
 use std::io::Read;
 use tar::EntryType;
-use crate::{FileItem, FileKind};
 
 pub struct TarContainer<T: Read> {
     archive: tar::Archive<T>,

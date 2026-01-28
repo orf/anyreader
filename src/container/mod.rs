@@ -1,6 +1,7 @@
 mod tar_container;
 mod zip_container;
 
+use crate::FileItem;
 use crate::container::tar_container::TarContainer;
 use crate::container::zip_container::ZipContainer;
 use crate::peekable::Peekable;
@@ -9,7 +10,6 @@ use std::fmt::{Debug, Formatter};
 use std::io;
 use std::io::Read;
 use tracing::trace;
-use crate::FileItem;
 
 // Annoying: this needs to be quite high to detect tar archives
 const ARCHIVE_BUF_SIZE: usize = 262;
@@ -56,10 +56,14 @@ impl<T: Read> ContainerKind<T, ARCHIVE_BUF_SIZE> {
                 let buf = r.peek_buf();
                 if infer::archive::is_tar(buf) {
                     trace!("tar detected");
-                    Ok(ContainerKind::Archive(ArchiveKind::Tar(TarContainer::new(StreamKind::Raw(r)))))
+                    Ok(ContainerKind::Archive(ArchiveKind::Tar(TarContainer::new(
+                        StreamKind::Raw(r),
+                    ))))
                 } else if infer::archive::is_zip(buf) {
                     trace!("zip detected");
-                    Ok(ContainerKind::Archive(ArchiveKind::Zip(ZipContainer::new(StreamKind::Raw(r)))))
+                    Ok(ContainerKind::Archive(ArchiveKind::Zip(ZipContainer::new(
+                        StreamKind::Raw(r),
+                    ))))
                 } else {
                     trace!("stream detected");
                     Ok(ContainerKind::Stream(StreamKind::Raw(r)))

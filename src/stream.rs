@@ -38,8 +38,7 @@ impl<T: Read, const N: usize> StreamKind<T, N> {
             Ok(StreamKind::Compressed(CompressionKind::Gzip(decoder)))
         } else if is_zstd(buf) {
             trace!("zstd detected");
-            let decoder =
-                zstd::Decoder::with_buffer(BufReader::new(peekable.into_reader()))?;
+            let decoder = zstd::Decoder::with_buffer(BufReader::new(peekable.into_reader()))?;
             Ok(StreamKind::Compressed(CompressionKind::Zst(decoder)))
         } else if infer::archive::is_bz2(buf) {
             trace!("bzip2 detected");

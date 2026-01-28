@@ -1,7 +1,7 @@
-use std::io;
-use anyreader::recursive_read;
+use anyreader::{iterate_archive, recursive_read};
 use clap::Parser;
 use clio::*;
+use std::io;
 use std::io::{BufReader, BufWriter, Read, Seek, Write};
 use std::path::Path;
 use tracing::info;
@@ -20,6 +20,9 @@ struct Args {
     /// Output file to write the tar archive to. Use `-` for stdout.
     #[clap(value_parser)]
     output: Output,
+    /// Don't recurse into nested archives or decompress entry contents.
+    #[clap(long, short = 's')]
+    shallow: bool,
 }
 
 fn main() -> anyhow::Result<()> {
@@ -33,15 +36,25 @@ fn main() -> anyhow::Result<()> {
     let mut builder = tar::Builder::new(BufWriter::new(args.output));
 
     for input in args.input {
-        handle_reader(&input.path().clone(), BufReader::new(input), &mut builder)?;
+        handle_reader(
+            &input.path().clone(),
+            BufReader::new(input),
+            &mut builder,
+            args.shallow,
+        )?;
     }
 
     builder.finish()?;
     Ok(())
 }
 
-fn handle_reader(path: &Path, reader: impl Read, builder: &mut tar::Builder<impl Write + Seek>) -> io::Result<()> {
-    recursive_read(path, reader, &mut |item| {
+fn handle_reader(
+    path: &Path,
+    reader: impl Read,
+    builder: &mut tar::Builder<impl Write + Seek>,
+    shallow: bool,
+) -> io::Result<()> {
+    let mut callback = |item: anyreader::FileItem<&mut dyn Read>| {
         if !item.kind.is_file() {
             return Ok(());
         }
@@ -50,6 +63,12 @@ fn handle_reader(path: &Path, reader: impl Read, builder: &mut tar::Builder<impl
         std::io::copy(item.reader, &mut entry)?;
         info!("Wrote {:?}", item.path);
         Ok(())
-    })?;
+    };
+
+    if shallow {
+        iterate_archive(reader, &mut callback)?;
+    } else {
+        recursive_read(path, reader, &mut callback)?;
+    }
     Ok(())
 }

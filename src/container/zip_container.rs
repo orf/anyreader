@@ -1,8 +1,8 @@
 use crate::container::{Container, Items};
+use crate::{FileItem, FileKind};
 use std::fmt::Debug;
 use std::io;
 use std::io::Read;
-use crate::{FileItem, FileKind};
 
 pub struct ZipContainer<T: Read> {
     reader: T,
