@@ -1,7 +1,7 @@
 mod utils;
 
 use crate::utils::{gzip_data, xz_data, zstd_data};
-use anyreader::{iterate_archive, recursive_read};
+use anyreader::{iterate_archive, recursive_read, SizeHint};
 use std::path::{Path, PathBuf};
 use tracing_test::traced_test;
 
@@ -192,4 +192,83 @@ fn test_iterate_archive_zip() {
     assert_eq!(entries[0].1, DATA);
     assert_eq!(entries[1].0, PathBuf::from("file-2.gz"));
     assert_eq!(entries[1].1, gzip_data(DATA)); // Still compressed
+}
+
+// Tests for SizeHint
+
+#[traced_test]
+#[test]
+fn test_size_hint_tar_exact() {
+    let archive = utils::tar_archive([("file.txt", DATA.to_vec())]);
+
+    let mut size_hints = Vec::new();
+    iterate_archive(archive.as_slice(), |item| {
+        size_hints.push(item.size_hint);
+        Ok(())
+    })
+    .unwrap();
+
+    assert_eq!(size_hints.len(), 1);
+    assert_eq!(size_hints[0], SizeHint::Exact(DATA.len() as u64));
+    assert!(size_hints[0].is_exact());
+    assert_eq!(size_hints[0].exact(), Some(DATA.len() as u64));
+}
+
+#[traced_test]
+#[test]
+fn test_size_hint_zip_exact() {
+    let archive = utils::zip_archive([("file.txt", DATA.to_vec())]);
+
+    let mut size_hints = Vec::new();
+    iterate_archive(archive.as_slice(), |item| {
+        size_hints.push(item.size_hint);
+        Ok(())
+    })
+    .unwrap();
+
+    assert_eq!(size_hints.len(), 1);
+    assert_eq!(size_hints[0], SizeHint::Exact(DATA.len() as u64));
+    assert!(size_hints[0].is_exact());
+    assert_eq!(size_hints[0].exact(), Some(DATA.len() as u64));
+}
+
+#[traced_test]
+#[test]
+fn test_size_hint_compressed_entry() {
+    // When recursive_read decompresses an entry, Exact becomes CompressedSize
+    let compressed_data = gzip_data(DATA);
+    let compressed_len = compressed_data.len() as u64;
+    let archive = utils::tar_archive([("file.gz", compressed_data)]);
+
+    let mut size_hints = Vec::new();
+    recursive_read(Path::new("root"), archive.as_slice(), &mut |item| {
+        size_hints.push(item.size_hint);
+        Ok(())
+    })
+    .unwrap();
+
+    assert_eq!(size_hints.len(), 1);
+    assert_eq!(size_hints[0], SizeHint::CompressedSize(compressed_len));
+    assert!(!size_hints[0].is_exact());
+    assert_eq!(size_hints[0].compressed_size(), Some(compressed_len));
+    assert_eq!(size_hints[0].any_known(), Some(compressed_len));
+}
+
+#[traced_test]
+#[test]
+fn test_size_hint_raw_stream() {
+    // Raw streams start with Unknown size
+    let mut size_hints = Vec::new();
+    recursive_read(Path::new("root"), DATA, &mut |item| {
+        size_hints.push(item.size_hint);
+        Ok(())
+    })
+    .unwrap();
+
+    assert_eq!(size_hints.len(), 1);
+    assert_eq!(size_hints[0], SizeHint::Unknown);
+    assert!(size_hints[0].is_unknown());
+    assert_eq!(size_hints[0].exact(), None);
+    assert_eq!(size_hints[0].compressed_size(), None);
+    assert_eq!(size_hints[0].any_known(), None);
 }

@@ -1,5 +1,5 @@
 use crate::container::{Container, Items};
-use crate::{FileItem, FileKind};
+use crate::{FileItem, FileKind, SizeHint};
 use std::fmt::Debug;
 use std::io;
 use std::io::Read;
@@ -32,10 +32,12 @@ impl<T: Read> Container for TarContainer<T> {
                 _ => FileKind::Other,
             };
             let path = item.path()?.to_path_buf();
+            let size_hint = item.header().size().map_or(SizeHint::Unknown, SizeHint::Exact);
             Ok(FileItem {
                 path,
                 reader: item,
                 kind,
+                size_hint,
             })
         }))
     }

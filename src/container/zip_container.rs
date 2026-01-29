@@ -1,5 +1,5 @@
 use crate::container::{Container, Items};
-use crate::{FileItem, FileKind};
+use crate::{FileItem, FileKind, SizeHint};
 use std::fmt::Debug;
 use std::io;
 use std::io::Read;
@@ -43,10 +43,12 @@ impl<T: Read> Items for ZipFileIter<'_, T> {
             } else {
                 FileKind::Other
             };
+            let size_hint = SizeHint::Exact(item.size());
             return Some(Ok(FileItem {
                 path,
                 reader: item,
                 kind,
+                size_hint,
             }));
         }
         None
