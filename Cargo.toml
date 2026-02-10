@@ -8,23 +8,23 @@ description = "Efficiently and recursively read archives and compressed streams 
 
 [dependencies]
 zstd = { version = "0.13.2", default-features = false, features = ["arrays"] }
-flate2 = { version = "1.1.1", features = ["zlib-ng"], default-features = false }
+flate2 = { version = "1.1.9", features = ["zlib-ng"], default-features = false }
 liblzma = "0.4.5"
 bzip2 = "0.6.1"
 tar = "0.4.43"
-zip = "7.2"
+zip = "7.4"
 infer = "0.19.0"
 tracing = "0.1.41"
 strum = { version = "0.27.1", features = ["derive"] }
 
 clio = { version = "0.3.5", features = ["clap-parse"], optional = true }
-clap = { version = "4.5.35", features = ["derive"], optional = true }
-anyhow = { version = "1.0.97", optional = true }
+clap = { version = "4.5.57", features = ["derive"], optional = true }
+anyhow = { version = "1.0.101", optional = true }
 tracing-subscriber = { version = "0.3.19", features = ["env-filter"], optional = true }
 
 [dev-dependencies]
 assert_matches = "1.5.0"
-tracing-test = { version = "0.2.5", features = ["no-env-filter"] }
+tracing-test = { version = "0.2.6", features = ["no-env-filter"] }
 
 [features]
 default = []
